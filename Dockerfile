@@ -1,0 +1,58 @@
+FROM nvidia/cuda:12.8.1-runtime-ubuntu22.04
+
+# ============================================================
+# Environment
+# ============================================================
+ENV DEBIAN_FRONTEND=noninteractive
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+ENV TZ=Asia/Seoul
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# Ollama defaults (overridable via gcube workload env)
+ENV OLLAMA_HOST=127.0.0.1:11434
+ENV OLLAMA_MAX_LOADED_MODELS=2
+
+# ============================================================
+# Base packages
+# ============================================================
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl wget git nano vim ca-certificates build-essential \
+        python3 python3-pip jq zstd ripgrep locales \
+    && locale-gen ko_KR.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================
+# Node.js 22 (OpenClaude requires >= 22)
+# ============================================================
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================
+# Ollama (for local model scenarios)
+# ============================================================
+RUN curl -fsSL https://ollama.com/download/ollama-linux-amd64.tar.zst \
+        -o /tmp/ollama.tar.zst \
+    && zstd -d /tmp/ollama.tar.zst --stdout | tar x -C /usr \
+    && rm /tmp/ollama.tar.zst
+
+# ============================================================
+# OpenClaude
+# ============================================================
+RUN npm install -g @gitlawb/openclaude
+
+# ============================================================
+# Workspace
+# ============================================================
+RUN mkdir -p /root/.claude /workspace
+WORKDIR /workspace
+
+# ============================================================
+# Entrypoint
+# ============================================================
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
