@@ -19,3 +19,6 @@ Thumbs.db
 # Local test outputs
 /results/
 /tmp/
+
+# docs
+/docs/

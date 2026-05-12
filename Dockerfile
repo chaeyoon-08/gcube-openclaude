@@ -44,6 +44,22 @@ RUN curl -fsSL https://ollama.com/download/ollama-linux-amd64.tar.zst \
 RUN npm install -g @gitlawb/openclaude
 
 # ============================================================
+# Bun + OpenClaude Source (for gRPC server mode)
+# ============================================================
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:${PATH}"
+
+RUN git clone https://github.com/Gitlawb/openclaude.git /opt/openclaude \
+    && cd /opt/openclaude \
+    && /root/.bun/bin/bun install
+
+# gRPC defaults (overridable via gcube workload env)
+ENV GRPC_PORT=50051
+ENV GRPC_HOST=0.0.0.0
+
+EXPOSE 50051
+
+# ============================================================
 # Workspace
 # ============================================================
 RUN mkdir -p /root/.claude /workspace
