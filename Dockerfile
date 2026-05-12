@@ -19,7 +19,7 @@ ENV OLLAMA_MAX_LOADED_MODELS=2
 # ============================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl wget git nano vim ca-certificates build-essential \
-        python3 python3-pip jq zstd ripgrep locales \
+        python3 python3-pip jq zstd unzip ripgrep locales \
     && locale-gen ko_KR.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
