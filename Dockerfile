@@ -14,12 +14,16 @@ ENV LC_ALL=C.UTF-8
 ENV OLLAMA_HOST=127.0.0.1:11434
 ENV OLLAMA_MAX_LOADED_MODELS=2
 
+# OpenClaude default mode (OpenAI 호환 모드)
+# Anthropic native 호출 시에만 사용자가 USE_ANTHROPIC=1 입력
+ENV CLAUDE_CODE_USE_OPENAI=1
+
 # ============================================================
 # Base packages
 # ============================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl wget git nano vim ca-certificates build-essential \
-        python3 python3-pip jq zstd unzip ripgrep locales \
+        python3 python3-pip jq zstd ripgrep locales \
     && locale-gen ko_KR.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -39,46 +43,20 @@ RUN curl -fsSL https://ollama.com/download/ollama-linux-amd64.tar.zst \
     && rm /tmp/ollama.tar.zst
 
 # ============================================================
-# 캐시 무효화 인자 (build.yml에서 매 빌드마다 다른 값 전달)
-# 아래 OpenClaude 관련 RUN은 이 ARG 이후부터 캐시 무효화됨
+# OpenClaude
 # ============================================================
-ARG CACHEBUST=1
-
-# ============================================================
-# OpenClaude (npm 글로벌 설치) - 콘솔 모드용
-# CACHEBUST로 매 빌드마다 최신 버전 설치
-# ============================================================
-RUN echo "Cache bust: ${CACHEBUST}" \
-    && npm install -g @gitlawb/openclaude
-
-# ============================================================
-# Bun + OpenClaude Source (for gRPC server mode)
-# CACHEBUST로 매 빌드마다 최신 소스 클론
-# ============================================================
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:${PATH}"
-
-RUN echo "Cache bust: ${CACHEBUST}" \
-    && git clone https://github.com/Gitlawb/openclaude.git /opt/openclaude \
-    && cd /opt/openclaude \
-    && /root/.bun/bin/bun install
-
-# gRPC defaults (overridable via gcube workload env)
-ENV GRPC_PORT=50051
-ENV GRPC_HOST=0.0.0.0
-
-EXPOSE 50051
+RUN npm install -g @gitlawb/openclaude
 
 # ============================================================
 # Workspace
 # ============================================================
-RUN mkdir -p /root/.claude /workspace/shared
+RUN mkdir -p /root/.claude /workspace
 WORKDIR /workspace
 
 # ============================================================
 # Entrypoint
 # ============================================================
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]

@@ -5,6 +5,16 @@ echo "  OpenClaude Base Image Entrypoint"
 echo "================================================"
 
 # ============================================================
+# Anthropic native 모드 분기 (USE_ANTHROPIC=1 시)
+# - Dockerfile 기본값으로 CLAUDE_CODE_USE_OPENAI=1 적용되어 있음
+# - Anthropic API 직접 호출이 필요하면 USE_ANTHROPIC=1 입력
+# ============================================================
+if [ "$USE_ANTHROPIC" = "1" ]; then
+    unset CLAUDE_CODE_USE_OPENAI
+    echo "[INFO] Anthropic native 모드 활성화 (CLAUDE_CODE_USE_OPENAI 비활성화)"
+fi
+
+# ============================================================
 # Git 자동 설정 (환경변수 기반)
 # ============================================================
 MISSING_VARS=0
@@ -81,6 +91,7 @@ cat << EOF
   OpenClaude container is ready
 ==================================================================
 
+  Mode:      ${USE_ANTHROPIC:+Anthropic native}${USE_ANTHROPIC:-OpenAI compatible}
   Provider:  ${OPENAI_BASE_URL:-${ANTHROPIC_BASE_URL:-anthropic native}}
   Model:     ${OPENAI_MODEL:-${ANTHROPIC_MODEL:-default}}
   Git user:  ${GIT_USER_NAME:-not configured}
