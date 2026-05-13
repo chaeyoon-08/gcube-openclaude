@@ -1,8 +1,8 @@
 # ============================================================
-# vLLM 공식 이미지를 베이스로 사용
-# - vLLM, PyTorch, CUDA 호환성 검증된 환경
-# - 위에 OpenClaude 및 관련 도구 추가
-# - build.yml의 pull: true 로 베이스 이미지 매 빌드마다 최신 pull
+# vLLM 공식 이미지를 베이스로 사용 (CUDA 12.9 호환)
+# - vLLM Hugging Face 모델 운영 전용
+# - OpenClaude (npm 콘솔 모드만) 포함
+# - Ollama, gRPC(bun+소스)는 basic 이미지에서 사용
 # ============================================================
 FROM vllm/vllm-openai:cu129-nightly
 
@@ -16,28 +16,22 @@ ENV LANGUAGE=ko_KR:ko
 ENV LC_ALL=ko_KR.UTF-8
 
 # ============================================================
-# 시스템 패키지 추가
+# 최소 시스템 패키지
 # ============================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl wget git nano vim ca-certificates \
-        jq zstd unzip ripgrep locales \
+        curl git ca-certificates locales \
     && locale-gen ko_KR.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================
-# Node.js 22
+# Node.js 22 (OpenClaude 실행 환경)
 # ============================================================
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs
-
-# ============================================================
-# Ollama
-# ============================================================
-RUN curl -fsSL https://ollama.com/install.sh | sh
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 # ============================================================
 # 캐시 무효화 인자 (build.yml에서 매 빌드마다 다른 값 전달)
-# 아래 OpenClaude 관련 RUN은 이 ARG 이후부터 캐시 무효화됨
 # ============================================================
 ARG CACHEBUST=1
 
@@ -46,25 +40,8 @@ ARG CACHEBUST=1
 # CACHEBUST로 매 빌드마다 최신 버전 설치
 # ============================================================
 RUN echo "Cache bust: ${CACHEBUST}" \
-    && npm install -g @gitlawb/openclaude
-
-# ============================================================
-# Bun + OpenClaude Source (for gRPC server mode)
-# CACHEBUST로 매 빌드마다 최신 소스 클론
-# ============================================================
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:${PATH}"
-
-RUN echo "Cache bust: ${CACHEBUST}" \
-    && git clone https://github.com/Gitlawb/openclaude.git /opt/openclaude \
-    && cd /opt/openclaude \
-    && /root/.bun/bin/bun install
-
-# gRPC defaults (overridable via workload env)
-ENV GRPC_PORT=50051
-ENV GRPC_HOST=0.0.0.0
-
-EXPOSE 50051
+    && npm install -g @gitlawb/openclaude \
+    && npm cache clean --force
 
 # ============================================================
 # Hugging Face 모델 캐시 기본 경로

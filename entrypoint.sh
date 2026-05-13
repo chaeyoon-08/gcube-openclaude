@@ -36,17 +36,24 @@ else
 fi
 
 # ============================================================
-# Ollama 백그라운드 시작
+# Ollama 백그라운드 시작 (Ollama가 설치된 이미지에서만)
+# - basic 이미지: Ollama 설치되어 있음 → 시작
+# - vllm 이미지: Ollama 없음 → 건너뜀
 # ============================================================
-echo ""
-echo "[INFO] Starting Ollama..."
-ollama serve > /var/log/ollama.log 2>&1 &
+if command -v ollama > /dev/null 2>&1; then
+    echo ""
+    echo "[INFO] Starting Ollama..."
+    ollama serve > /var/log/ollama.log 2>&1 &
 
-echo "[INFO] Waiting for Ollama to be ready..."
-until curl -s http://localhost:11434 > /dev/null 2>&1; do
-    sleep 1
-done
-echo "[INFO] Ollama ready."
+    echo "[INFO] Waiting for Ollama to be ready..."
+    until curl -s http://localhost:11434 > /dev/null 2>&1; do
+        sleep 1
+    done
+    echo "[INFO] Ollama ready."
+else
+    echo ""
+    echo "[INFO] Ollama not installed (vllm image), skipping Ollama startup."
+fi
 
 # ============================================================
 # OpenClaude 안내 메시지
@@ -74,8 +81,8 @@ cat << EOF
   Useful CLI commands:
     \$ openclaude --print "your task here"   # one-shot mode
     \$ openclaude --version                  # check version
-    \$ ollama list                           # list pulled local models
-    \$ ollama pull <model>                   # pull a local model
+    \$ ollama list                           # list pulled local models (basic image only)
+    \$ ollama pull <model>                   # pull a local model (basic image only)
 
 ==================================================================
 
@@ -86,20 +93,27 @@ echo "  설정 완료! 컨테이너를 시작합니다."
 echo "================================================"
 
 # ============================================================
-# gRPC 서버 모드 분기 (OPENCLAUDE_GRPC_ENABLED=1 시 자동 기동)
+# gRPC 서버 모드 분기 (GRPC_MODE=1 시 자동 기동)
+# - basic 이미지에서만 동작 (vllm 이미지에는 bun + 소스 없음)
 # ============================================================
 if [ "$GRPC_MODE" = "1" ]; then
-    echo ""
-    echo "================================================"
-    echo "  OpenClaude gRPC Server Mode"
-    echo "================================================"
-    echo "  Port:  ${GRPC_PORT:-50051}"
-    echo "  Host:  ${GRPC_HOST:-0.0.0.0}"
-    echo "  Model: ${OPENAI_MODEL:-${ANTHROPIC_MODEL:-default}}"
-    echo "================================================"
+    if [ -d "/opt/openclaude" ] && command -v bun > /dev/null 2>&1; then
+        echo ""
+        echo "================================================"
+        echo "  OpenClaude gRPC Server Mode"
+        echo "================================================"
+        echo "  Port:  ${GRPC_PORT:-50051}"
+        echo "  Host:  ${GRPC_HOST:-0.0.0.0}"
+        echo "  Model: ${OPENAI_MODEL:-${ANTHROPIC_MODEL:-default}}"
+        echo "================================================"
 
-    cd /opt/openclaude
-    exec bun run dev:grpc
+        cd /opt/openclaude
+        exec bun run dev:grpc
+    else
+        echo ""
+        echo "[WARN] GRPC_MODE=1 이지만 gRPC 실행 환경이 없습니다 (vllm 이미지)."
+        echo "[WARN] gRPC 모드는 basic 이미지(gcube-openclaude)를 사용해주세요."
+    fi
 fi
 
 # ============================================================

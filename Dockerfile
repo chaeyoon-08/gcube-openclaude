@@ -39,17 +39,27 @@ RUN curl -fsSL https://ollama.com/download/ollama-linux-amd64.tar.zst \
     && rm /tmp/ollama.tar.zst
 
 # ============================================================
-# OpenClaude
+# 캐시 무효화 인자 (build.yml에서 매 빌드마다 다른 값 전달)
+# 아래 OpenClaude 관련 RUN은 이 ARG 이후부터 캐시 무효화됨
 # ============================================================
-RUN npm install -g @gitlawb/openclaude
+ARG CACHEBUST=1
+
+# ============================================================
+# OpenClaude (npm 글로벌 설치) - 콘솔 모드용
+# CACHEBUST로 매 빌드마다 최신 버전 설치
+# ============================================================
+RUN echo "Cache bust: ${CACHEBUST}" \
+    && npm install -g @gitlawb/openclaude
 
 # ============================================================
 # Bun + OpenClaude Source (for gRPC server mode)
+# CACHEBUST로 매 빌드마다 최신 소스 클론
 # ============================================================
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
 
-RUN git clone https://github.com/Gitlawb/openclaude.git /opt/openclaude \
+RUN echo "Cache bust: ${CACHEBUST}" \
+    && git clone https://github.com/Gitlawb/openclaude.git /opt/openclaude \
     && cd /opt/openclaude \
     && /root/.bun/bin/bun install
 
@@ -62,13 +72,13 @@ EXPOSE 50051
 # ============================================================
 # Workspace
 # ============================================================
-RUN mkdir -p /root/.claude /workspace
+RUN mkdir -p /root/.claude /workspace/shared
 WORKDIR /workspace
 
 # ============================================================
 # Entrypoint
 # ============================================================
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
